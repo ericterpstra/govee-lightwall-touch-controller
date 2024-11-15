@@ -9,6 +9,14 @@ const TOUCH_DEBOUNCE_MS = 1000; // Debounce delay in milliseconds
 const touchSensor = new MPR121();
 const govee = new GoveeApi();
 
+const SCENE_COLLECTIONS = {
+    NIGHT: ["Sunset", "Moon", "Moonlight", "Mountain Forest", "Fire", "Forest Fireflies", "Space", "Camping", "Starry Night"],
+    FUN: ["Groovy", "Shiny Rainbow", "Bubble", "Spider", "Music Note", "Love Heart", "UFO", "Lollipop", "Carousel", "Maze"],
+    HOLIDAY: ["Snowman", "Christmas Tree", "Santa Claus", "Sled", "Christmas Gift", "Christmas Wreath"],
+    NATURE: ["Sea Island", "Starfish", "Wave", "Rainbow", "Mushroom", "Flamingo Couple", "Waterfall"],
+    ARTSY: ["Sunflowers", "Bonsai", "The Scream", "Mondrian", "Graffiti", "Rhomb", "Dot Eater"]
+}
+
 // Selected scenes for pins 4-7
 const PIN_SCENES = {
     4: SCENES["Rainbow Swirl"],     // Pin 4: Rainbow Swirl
