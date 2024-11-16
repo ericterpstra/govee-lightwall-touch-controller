@@ -17,25 +17,48 @@ const SCENE_COLLECTIONS = {
     ARTSY: ["Sunflowers", "Bonsai", "The Scream", "Mondrian", "Graffiti", "Rhomb", "Dot Eater"]
 }
 
-// Selected scenes for pins 4-7
-const PIN_SCENES = {
-    4: SCENES["Rainbow Swirl"],     // Pin 4: Rainbow Swirl
-    5: SCENES["Starry Night"],      // Pin 5: Starry Night
-    6: SCENES["Forest Fireflies"],  // Pin 6: Forest Fireflies
-    7: SCENES["Space"],             // Pin 7: Space
-    8: SCENES["Windmill"],          // Pin 7: Space
+// Track current index for each collection
+const collectionIndices = {
+    4: 0, // NIGHT
+    5: 0, // FUN
+    6: 0, // HOLIDAY
+    7: 0, // NATURE
+    8: 0  // ARTSY
 };
 
-// Debounce function
+// Map pins to collections
+const PIN_TO_COLLECTION = {
+    4: 'NIGHT',
+    5: 'FUN',
+    6: 'HOLIDAY',
+    7: 'NATURE',
+    8: 'ARTSY'
+};
+
+// Debounce function with immediate execution
 function debounce(func, wait) {
     let timeout;
+    let lastRun = 0;
+
     return function executedFunction(...args) {
-        const later = () => {
+        const now = Date.now();
+
+        // If enough time has passed since last execution, run immediately
+        if (now - lastRun >= wait) {
+            func.apply(this, args);
+            lastRun = now;
             clearTimeout(timeout);
-            func(...args);
-        };
+            return;
+        }
+
+        // Otherwise, debounce subsequent calls
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => {
+            if (Date.now() - lastRun >= wait) {
+                func.apply(this, args);
+                lastRun = Date.now();
+            }
+        }, wait);
     };
 }
 
@@ -84,14 +107,24 @@ async function handleTouch(pin) {
             case 6:
             case 7:
             case 8:
-                // Set dynamic scene
-                if (PIN_SCENES[pin]) {
+                const collection = PIN_TO_COLLECTION[pin];
+                const scenes = SCENE_COLLECTIONS[collection];
+                const currentIndex = collectionIndices[pin];
+
+                // Get the scene name from the collection
+                const sceneName = scenes[currentIndex];
+                const sceneId = SCENES[sceneName];
+
+                if (sceneId) {
                     await govee.controlDevice({
                         type: 'devices.capabilities.dynamic_scene',
                         instance: 'lightScene',
-                        value: PIN_SCENES[pin]
+                        value: sceneId
                     });
-                    console.log(`Scene set to ${Object.keys(SCENES).find(key => SCENES[key] === PIN_SCENES[pin])}`);
+                    console.log(`Scene set to ${sceneName} (${collection} collection)`);
+
+                    // Update index for next touch, wrapping around to 0 if at end
+                    collectionIndices[pin] = (currentIndex + 1) % scenes.length;
                 }
                 break;
         }
@@ -118,11 +151,11 @@ process.on('SIGINT', () => {
 
 console.log('Touch control system initialized');
 console.log('Pin mappings:');
-console.log('Pin 0: Turn on');
-console.log('Pin 1: Turn off');
 console.log('Pin 2: Brightness 100%');
 console.log('Pin 3: Brightness 0%');
-console.log('Pin 4: Rainbow Swirl scene');
-console.log('Pin 5: Starry Night scene');
-console.log('Pin 6: Forest Fireflies scene');
-console.log('Pin 7: Space scene');
+console.log('Pin 4: NIGHT scenes');
+console.log('Pin 5: FUN scenes');
+console.log('Pin 6: HOLIDAY scenes');
+console.log('Pin 7: NATURE scenes');
+console.log('Pin 8: ARTSY scenes');
+console.log('Pin 9: Turn off');
