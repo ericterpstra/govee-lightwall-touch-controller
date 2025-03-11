@@ -4,6 +4,8 @@ const SCENES = require('./scenes');
 
 // Configuration
 const TOUCH_DEBOUNCE_MS = 1000; // Debounce delay in milliseconds
+const ALLOWED_START_HOUR = 8; // 8am
+const ALLOWED_END_HOUR = 20; // 8pm
 
 // Initialize MPR121 touch sensor
 const touchSensor = new MPR121();
@@ -62,20 +64,58 @@ function debounce(func, wait) {
     };
 }
 
+// Function to check if current time is within allowed period
+function isAllowedTime() {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    // Allow if current hour is between ALLOWED_START_HOUR and ALLOWED_END_HOUR
+    return currentHour >= ALLOWED_START_HOUR && currentHour < ALLOWED_END_HOUR;
+}
+
 // Touch handler function
 async function handleTouch(pin) {
     try {
+        // Check if it's the "Turn Off" action (always allowed) or if it's within allowed time
+        const isTurnOff = pin === 9;
+        const canControlDevice = isTurnOff || isAllowedTime();
+
         switch (pin) {
             case 0: // Turn on
-                await govee.controlDevice({
-                    type: 'devices.capabilities.on_off',
-                    instance: 'powerSwitch',
-                    value: 1
-                });
-                console.log('Light turned on');
+                if (canControlDevice) {
+                    await govee.controlDevice({
+                        type: 'devices.capabilities.on_off',
+                        instance: 'powerSwitch',
+                        value: 1
+                    });
+                    console.log('Light turned on');
+                } else {
+                    console.log('Light turn on request ignored - outside allowed time period');
+                }
                 break;
 
-            case 9: // Turn off
+            case 1: // Random scene
+                if (canControlDevice) {
+                    // Get all scene names
+                    const allSceneNames = Object.keys(SCENES);
+
+                    // Select a random scene
+                    const randomIndex = Math.floor(Math.random() * allSceneNames.length);
+                    const randomSceneName = allSceneNames[randomIndex];
+                    const randomSceneId = SCENES[randomSceneName];
+
+                    await govee.controlDevice({
+                        type: 'devices.capabilities.dynamic_scene',
+                        instance: 'lightScene',
+                        value: randomSceneId
+                    });
+                    console.log(`Random scene set to: ${randomSceneName}`);
+                } else {
+                    console.log('Random scene request ignored - outside allowed time period');
+                }
+                break;
+
+            case 9: // Turn off - always allowed
                 await govee.controlDevice({
                     type: 'devices.capabilities.on_off',
                     instance: 'powerSwitch',
@@ -85,21 +125,29 @@ async function handleTouch(pin) {
                 break;
 
             case 2: // Brightness 100%
-                await govee.controlDevice({
-                    type: 'devices.capabilities.range',
-                    instance: 'brightness',
-                    value: 99
-                });
-                console.log('Brightness set to 100%');
+                if (canControlDevice) {
+                    await govee.controlDevice({
+                        type: 'devices.capabilities.range',
+                        instance: 'brightness',
+                        value: 99
+                    });
+                    console.log('Brightness set to 100%');
+                } else {
+                    console.log('Brightness change request ignored - outside allowed time period');
+                }
                 break;
 
             case 3: // Brightness 0%
-                await govee.controlDevice({
-                    type: 'devices.capabilities.range',
-                    instance: 'brightness',
-                    value: 1
-                });
-                console.log('Brightness set to 0%');
+                if (canControlDevice) {
+                    await govee.controlDevice({
+                        type: 'devices.capabilities.range',
+                        instance: 'brightness',
+                        value: 1
+                    });
+                    console.log('Brightness set to 0%');
+                } else {
+                    console.log('Brightness change request ignored - outside allowed time period');
+                }
                 break;
 
             case 4:
@@ -116,15 +164,19 @@ async function handleTouch(pin) {
                 const sceneId = SCENES[sceneName];
 
                 if (sceneId) {
-                    await govee.controlDevice({
-                        type: 'devices.capabilities.dynamic_scene',
-                        instance: 'lightScene',
-                        value: sceneId
-                    });
-                    console.log(`Scene set to ${sceneName} (${collection} collection)`);
+                    if (canControlDevice) {
+                        await govee.controlDevice({
+                            type: 'devices.capabilities.dynamic_scene',
+                            instance: 'lightScene',
+                            value: sceneId
+                        });
+                        console.log(`Scene set to ${sceneName} (${collection} collection)`);
 
-                    // Update index for next touch, wrapping around to 0 if at end
-                    collectionIndices[pin] = (currentIndex + 1) % scenes.length;
+                        // Update index for next touch, wrapping around to 0 if at end
+                        collectionIndices[pin] = (currentIndex + 1) % scenes.length;
+                    } else {
+                        console.log(`Scene change request ignored - outside allowed time period`);
+                    }
                 }
                 break;
         }
@@ -151,6 +203,8 @@ process.on('SIGINT', () => {
 
 console.log('Touch control system initialized');
 console.log('Pin mappings:');
+console.log('Pin 0: Turn on');
+console.log('Pin 1: Random scene');
 console.log('Pin 2: Brightness 100%');
 console.log('Pin 3: Brightness 0%');
 console.log('Pin 4: NIGHT scenes');
