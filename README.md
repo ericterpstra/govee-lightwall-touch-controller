@@ -14,7 +14,7 @@ After implulse buying a giant LED light curtain ([Govee brand](https://us.govee.
 
 After kicking around a few ideas for alternative controls (gamepads, tiny keyboards, a small touchscreen) and browing Adafruit, I landed on the [Adafruit Capacitive Touch HAT](https://www.adafruit.com/product/2340) for Raspberry Pi. 
 
-![](/docs/adafruit.jpg)
+![](/docs/adafruit.jpg | width=100)
 
 This left options wide open  -  I could make buttons out of pretty much anything. I can't remember where the painting idea came from, but I was pretty excited to try it. After much trial and error, a lot of vibe coding, a few late nights and early mornings I managed to get it done. Details below...
 
@@ -69,22 +69,29 @@ The code to get this all working together has three elements:
 - A fork of the `mpr121` node.js library to allow some sensitivity adjustments
 - A main program to tie the touch library to the Govee API
 
-### MPR121 Library
+All of the code is found in this repo in the `/lib/` folder or `index.js`.
 
-I had to fork a local copy of the MPR121 library to adjust the touch and release thresholds. There's a function to alter them, but calling it after the module initializes doesn't actually do anything. Around linke 162 in index.js I set it to: `return this.setThresholds(25, 15)` which seemed to be OK.  There were still quite a bit of false positives (touch when there weren't any) AND false negatives (touching registers nothing), but after a good bit of trial and error, this is the best I could land on for conductive tape with some paint smeared on it. I also had Claude document every line for funsies. 
+### MPR121 Library (/lib/MPR121)
+
+I had to fork a local copy of the MPR121 npm library to adjust the touch and release thresholds. There's a function to alter them, but calling it after the module initializes doesn't actually do anything. Around linke 162 in index.js I set it to: `return this.setThresholds(25, 15)` which seemed to be OK.  There were still quite a bit of false positives (touch when there weren't any) AND false negatives (touching registers nothing), but after a good bit of trial and error, this is the best I could land on for conductive tape with some paint smeared on it. I also had Claude document every line for funsies. 
 
 ### Govee API Wrapper
 
-Govee has a pretty decent [API](https://developer.govee.com/reference/apply-you-govee-api-key) for all its products, and it's free.  I tried "vibe coding" a Govee API wrapper, but quickly noticed my AI buddy using the wrong version of the API for my device, so I had to download the documentation locally and use that as context when having Claude barf out code. Modern problems require modern solutions. 
+Govee has a pretty decent [API](https://developer.govee.com/reference/apply-you-govee-api-key) for all its products, and it's free.  I tried "vibe coding" a Govee API wrapper with [Cline](https://cline.bot) and Sonnet 3.5, but quickly noticed my AI buddy using the wrong version of the API for my device, so I had to download the documentation locally and use that as context when having Claude barf out code. Modern problems require modern solutions. 
 
 The wrapper is pretty barebones. I just included what I needed, and a lot of the functionality is in a single API endpoint and the function and data values are passed in as JSON payloads. It uses an API key as a bearer token for auth, and devices are identified by MAC address.  All this info is shoved into a config file.
 
 ### Putting It All Together
 
-The main application connects the touch inputs from the MPR121 sensor to specific Govee light commands. When a painted area is touched, the corresponding light command is sent to the Govee light wall through the API wrapper. Basic functionality like "ON" and "OFF" were pretty straightforward. Changing to a specific "scene" is simple as well, but I wanted the "buttons" to each cycle through a series of collected scenes.  For example, tapping the bat in a cave turns on a nighttime scene and tapping it again goes to the next nighttime scene. Most of the `handleTouch` code revolves around rotating through the scenes and sending the appropriate command to the Govee API via the wrapper function. 
+The main application connects the touch inputs from the MPR121 sensor to specific Govee light commands. When a painted area is touched, the corresponding light command is sent to the Govee light wall through the API wrapper. Basic functionality like "ON" and "OFF" were pretty straightforward. 
+
+Changing to a specific "scene" is simple as well, but I wanted the "buttons" to each cycle through a series of collected scenes.  For example, tapping the bat in a cave turns on a nighttime scene and tapping it again goes to the next nighttime scene. Most of the `handleTouch` code revolves around rotating through the scenes and sending the appropriate command to the Govee API via the wrapper function. 
 
 When I first started testing the device, it worked surprisingly well.  However, for its initial 24 hour voyage, it popped on at 3am at full brightness.  Nobody was happy about this.  That's when I added the `isAllowedTime` function which effectively disables any and all calls to the GoveeAPI between 8pm and 8am. It's been humming along ever since.
 
 My final task was to attach it to the wall.  A custom 3d printed "command hook" was my final task before shipping this baby to prod. 
+
+![](/docs/painting%20hook.jpeg)
+
 
 ## THE END
